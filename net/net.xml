@@ -1,0 +1,6 @@
+<network>
+  <name>k8s-the-hard-way</name>
+  <bridge name="virbr100" />
+  <forward mode="route" />
+  <ip address="10.240.0.1" netmask="255.255.255.0" />
+</network>

@@ -1,0 +1,16 @@
+{
+  "CN": "system:kube-proxy",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "IT",
+      "L": "Milan",
+      "O": "system:node-proxier",
+      "OU": "Kubernetes Admins",
+      "ST": "Lombardy"
+    }
+  ]
+}

@@ -1,0 +1,16 @@
+{
+  "CN": "system:kube-controller-manager",
+  "key": {
+    "algo": "rsa",
+    "size": 2048
+  },
+  "names": [
+    {
+      "C": "IT",
+      "L": "Milan",
+      "O": "system:kube-controller-manager",
+      "OU": "Kubernetes Admins",
+      "ST": "Lombardy"
+    }
+  ]
+}

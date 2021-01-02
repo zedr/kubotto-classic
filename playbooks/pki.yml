@@ -1,0 +1,260 @@
+---
+- hosts: all
+  vars:
+    base_url: "https://storage.googleapis.com/kubernetes-the-hard-way/cfssl"
+    version: "1.4.1"
+    target_dir: "/usr/local/bin"
+    kubernetes_hostnames: "kubernetes,kubernetes.default,kubernetes.default.svc,kubernetes.default.svc.cluster,kubernetes.svc.cluster.local"
+  tasks:
+
+    - name: Download cfssl tools
+      get_url:
+        url: "{{ base_url }}/{{ version }}/linux/{{ item }}"
+        dest: "{{ target_dir }}"
+        mode: "u+x"
+      with_items:
+        - cfssl
+        - cfssljson
+
+    - name: Create CA cert files
+      block:
+
+        - name: Copy CA config files
+          copy:
+            src: "pki/{{ item }}"
+            dest: "{{ ansible_env.HOME }}"
+          with_items:
+            - ca-config.json
+            - ca-csr.json
+
+        - name: Generate CA cert
+          command: "cfssl gencert -initca ca-csr.json"
+          register: cfssl_result
+
+        - name: Process response from cfssl
+          command:
+            cmd: "cfssljson -bare ca"
+            creates: ca.pem
+          args:
+            stdin: "{{ cfssl_result.stdout | string }}"
+
+    - name: Create Admin client certificates
+      block:
+
+        - name: Copy Admin CSR
+          copy:
+            src: "pki/admin-csr.json"
+            dest: "{{ ansible_env.HOME }}"
+
+        - name: Generate Admin cert
+          command:
+            argv:
+              - "cfssl"
+              - "gencert"
+              - "-ca"
+              - "ca.pem"
+              - "-ca-key"
+              - "ca-key.pem"
+              - "-config"
+              - "ca-config.json"
+              - "-profile"
+              - "kubernetes"
+              - "admin-csr.json"
+          register: cfssl_result
+
+        - name: Process response from cfssl
+          command:
+            cmd: "cfssljson -bare admin"
+            creates: admin.pem
+          args:
+            stdin: "{{ cfssl_result.stdout | string }}"
+
+        - name: Create K8S node certificates
+          block:
+
+            - name: Copy Admin CSR
+              copy:
+                src: "pki/k8s-csr.json"
+                dest: "{{ ansible_env.HOME }}"
+            
+            - name: Generate Admin cert
+              command:
+                argv:
+                  - "cfssl"
+                  - "gencert"
+                  - "-ca"
+                  - "ca.pem"
+                  - "-ca-key"
+                  - "ca-key.pem"
+                  - "-config"
+                  - "ca-config.json"
+                  - "-hostname"
+                  - "k8s,{{ ansible_all_ipv4_addresses | join(',') }}"
+                  - "-profile"
+                  - "kubernetes"
+                  - "k8s-csr.json"
+              register: cfssl_result
+            
+            - name: Process response from cfssl
+              command:
+                cmd: "cfssljson -bare k8s"
+                creates: k8s.pem
+              args:
+                stdin: "{{ cfssl_result.stdout | string }}"
+
+        - name: Create Controller Manager certificates
+          block:
+
+            - name: Copy CM CSR
+              copy:
+                src: "pki/kube-controller-manager-csr.json"
+                dest: "{{ ansible_env.HOME }}"
+            
+            - name: Generate Admin cert
+              command:
+                argv:
+                  - "cfssl"
+                  - "gencert"
+                  - "-ca"
+                  - "ca.pem"
+                  - "-ca-key"
+                  - "ca-key.pem"
+                  - "-config"
+                  - "ca-config.json"
+                  - "-profile"
+                  - "kubernetes"
+                  - "kube-controller-manager-csr.json"
+              register: cfssl_result
+            
+            - name: Process response from cfssl
+              command:
+                cmd: "cfssljson -bare kube-controller-manager"
+                creates: kube-controller-manager.pem
+              args:
+                stdin: "{{ cfssl_result.stdout | string }}"
+
+        - name: Create Kube Proxy Client certificate
+          block:
+
+            - name: Copy Kube Proxy Client CSR
+              copy:
+                src: "pki/kube-proxy-csr.json"
+                dest: "{{ ansible_env.HOME }}"
+            
+            - name: Generate Admin cert
+              command:
+                argv:
+                  - "cfssl"
+                  - "gencert"
+                  - "-ca"
+                  - "ca.pem"
+                  - "-ca-key"
+                  - "ca-key.pem"
+                  - "-config"
+                  - "ca-config.json"
+                  - "-profile"
+                  - "kubernetes"
+                  - "kube-proxy-csr.json"
+              register: cfssl_result
+            
+            - name: Process response from cfssl
+              command:
+                cmd: "cfssljson -bare kube-proxy"
+                creates: kube-proxy.pem
+              args:
+                stdin: "{{ cfssl_result.stdout | string }}"
+
+        - name: Create Kube Scheduler certificate
+          block:
+
+            - name: Copy Kube Scheduler CSR
+              copy:
+                src: "pki/kube-scheduler-csr.json"
+                dest: "{{ ansible_env.HOME }}"
+            
+            - name: Generate Scheduler cert
+              command:
+                argv:
+                  - "cfssl"
+                  - "gencert"
+                  - "-ca"
+                  - "ca.pem"
+                  - "-ca-key"
+                  - "ca-key.pem"
+                  - "-config"
+                  - "ca-config.json"
+                  - "-profile"
+                  - "kubernetes"
+                  - "kube-scheduler-csr.json"
+              register: cfssl_result
+            
+            - name: Process response from cfssl
+              command:
+                cmd: "cfssljson -bare kube-scheduler"
+                creates: kube-scheduler.pem
+              args:
+                stdin: "{{ cfssl_result.stdout | string }}"
+
+        - name: Create Kube API Server certificate
+          block:
+
+            - name: Copy Kube API Server Client CSR
+              copy:
+                src: "pki/kubernetes-csr.json"
+                dest: "{{ ansible_env.HOME }}"
+            
+            - name: Generate API Server cert
+              command:
+                argv:
+                  - "cfssl"
+                  - "gencert"
+                  - "-ca"
+                  - "ca.pem"
+                  - "-ca-key"
+                  - "ca-key.pem"
+                  - "-config"
+                  - "ca-config.json"
+                  - "-hostname"
+                  - "10.32.0.1,10.240.0.10,{{ ansible_all_ipv4_addresses | join(',') }},127.0.0.1,{{ kubernetes_hostnames }}"
+                  - "-profile"
+                  - "kubernetes"
+                  - "kubernetes-csr.json"
+              register: cfssl_result
+            
+            - name: Process response from cfssl
+              command:
+                cmd: "cfssljson -bare kubernetes"
+                creates: kubernetes.pem
+              args:
+                stdin: "{{ cfssl_result.stdout | string }}"
+
+        - name: Create Service Account certificate
+          block:
+
+            - name: Copy Service Account CSR
+              copy:
+                src: "pki/service-account-csr.json"
+                dest: "{{ ansible_env.HOME }}"
+            
+            - name: Generate API Server cert
+              command:
+                argv:
+                  - "cfssl"
+                  - "gencert"
+                  - "-ca"
+                  - "ca.pem"
+                  - "-ca-key"
+                  - "ca-key.pem"
+                  - "-config"
+                  - "ca-config.json"
+                  - "-profile"
+                  - "kubernetes"
+                  - "service-account-csr.json"
+              register: cfssl_result
+            
+            - name: Process response from cfssl
+              command:
+                cmd: "cfssljson -bare service-account"
+                creates: service-account.pem
+              args:
+                stdin: "{{ cfssl_result.stdout | string }}"

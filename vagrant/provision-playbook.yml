@@ -1,0 +1,16 @@
+- hosts: all
+  order: sorted
+  gather_facts: False
+  become_user: root
+  become: true
+  tasks:
+    - file:
+        path: /root/.ssh
+        owner: root
+        group: root
+        state: directory
+        mode: '0600'
+    - copy:
+        src: ~/.ssh/id_rsa.pub 
+        dest: /root/.ssh/authorized_keys
+        mode: '0600'
