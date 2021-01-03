@@ -7,8 +7,13 @@
   tasks:
     - name: Get kubectl
       get_url: 
-        url: "{{ base_url}}/v{{ version }}/bin/linux/amd64/kubectl"
+        url: "{{ base_url}}/v{{ version }}/bin/linux/amd64/{{ item }}"
         dest: "{{ target_dir }}"
         mode: "u+x"
+      with_items:
+        - kubectl
+        - kube-apiserver
+        - kube-controller-manager
+        - kube-scheduler
 
 
