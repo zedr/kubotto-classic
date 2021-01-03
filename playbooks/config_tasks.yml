@@ -1,0 +1,54 @@
+---
+- name: "Set cluster for {{ item.name }}"
+  command:
+    argv:
+      - "kubectl"
+      - "config"
+      - "set-cluster"
+      - "k8s"
+      - "--certificate-authority"
+      - "ca.pem"
+      - "--server"
+      - "https://127.0.0.1:6443"
+      - "--kubeconfig"
+      - "{{ item.name }}.kubeconfig"
+      - "--embed-certs"
+
+- name: "Set credentials for {{ item.name }}"
+  command:
+    argv:
+      - "kubectl"
+      - "config"
+      - "set-credentials"
+      - "system:node:k8s"
+      - "--client-certificate"
+      - "{{ item.name }}.pem"
+      - "--client-key"
+      - "{{ item.name }}-key.pem"
+      - "--kubeconfig"
+      - "{{ item.name }}.kubeconfig"
+      - "--embed-certs"
+
+- name: "Set context for {{ item.name }}"
+  command:
+    argv:
+      - "kubectl"
+      - "config"
+      - "set-context"
+      - "default"
+      - "--cluster"
+      - "k8s"
+      - "--user"
+      - "{{ item.user }}"
+      - "--kubeconfig"
+      - "{{ item.name }}.kubeconfig"
+
+- name: "Use context for {{ item.name }}"
+  command:
+    argv:
+      - "kubectl"
+      - "config"
+      - "use-context"
+      - "default"
+      - "--kubeconfig"
+      - "{{ item.name }}.kubeconfig"

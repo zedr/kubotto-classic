@@ -1,0 +1,22 @@
+---
+- hosts: k8s
+  vars:
+    targets:
+      - name: "k8s"
+        user: "system:node:k8s"
+      - name: "kube-proxy"
+        user: "system:kube-proxy"
+      - name: "kube-controller-manager"
+        user: "system:kube-controller-manager"
+      - name: "kube-scheduler"
+        user: "system:kube-scheduler"
+      - name: "admin"
+        user: "admin"
+  tasks:
+
+    - name: Configuration tasks
+      include_tasks: config_tasks.yml
+      loop: "{{ targets }}"
+
+
+

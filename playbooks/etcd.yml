@@ -1,0 +1,25 @@
+---
+- hosts: all
+  vars:
+    base_url: "https://github.com/etcd-io/etcd/releases/download"
+    version: "3.4.10"
+    target_dir: "/usr/local/bin"
+  tasks:
+
+    - name: Get Etcd distribution
+      unarchive: 
+        src: "{{ base_url}}/v{{ version }}/etcd-v{{ version }}-linux-amd64.tar.gz"
+        remote_src: yes
+        dest: "/tmp/"
+        creates: "/tmp/etcd-v{{ version }}-linux-amd64"
+
+    - name: Copy Etcd binaries
+      copy:
+        src: "/tmp/etcd-v{{ version }}-linux-amd64/{{ item }}"
+        dest: "/usr/local/bin/"
+        remote_src: yes
+      with_items:
+        - etcd
+        - etcdctl
+
+
