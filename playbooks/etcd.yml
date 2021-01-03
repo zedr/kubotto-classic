@@ -4,6 +4,7 @@
     base_url: "https://github.com/etcd-io/etcd/releases/download"
     version: "3.4.10"
     target_dir: "/usr/local/bin"
+    internal_ip: "10.240.0.2"
   tasks:
 
     - name: Get Etcd distribution
@@ -18,8 +19,91 @@
         src: "/tmp/etcd-v{{ version }}-linux-amd64/{{ item }}"
         dest: "/usr/local/bin/"
         remote_src: yes
+        mode: "u+x"
       with_items:
         - etcd
         - etcdctl
 
+    - name: Configure Etcd
+      file:
+        path: "{{ item }}"
+        mode: 0700
+        state: directory
+      with_items:
+        - "/etc/etcd"
+        - "/var/lib/etcd"
+
+    - name: Copy the certificate to the Etcd config directory
+      copy:
+        src: "{{ ansible_env.HOME }}/{{ item }}"
+        remote_src: yes
+        dest: "/etc/etcd/"
+      with_items:
+        - ca.pem
+        - kubernetes-key.pem
+        - kubernetes.pem
+
+    - name: Create the Unit for Etcd
+      blockinfile:
+        path: "/etc/systemd/system/etcd.service"
+        create: yes
+        content: |
+          [Unit]
+          Description=etcd
+          Documentation=https://github.com/coreos
+
+          [Service]
+          Type=notify
+          ExecStart=/usr/local/bin/etcd \
+            --name {{ ansible_hostname }} \
+            --cert-file=/etc/etcd/kubernetes.pem \
+            --key-file=/etc/etcd/kubernetes-key.pem \
+            --peer-cert-file=/etc/etcd/kubernetes.pem \
+            --peer-key-file=/etc/etcd/kubernetes-key.pem \
+            --trusted-ca-file=/etc/etcd/ca.pem \
+            --peer-trusted-ca-file=/etc/etcd/ca.pem \
+            --peer-client-cert-auth \
+            --client-cert-auth \
+            --initial-advertise-peer-urls https://{{ internal_ip }}:2380 \
+            --listen-peer-urls https://{{ internal_ip }}:2380 \
+            --listen-client-urls https://{{ internal_ip }}:2379,https://127.0.0.1:2379 \
+            --advertise-client-urls https://{{ internal_ip }}:2379 \
+            --initial-cluster-token etcd-cluster-0 \
+            --initial-cluster {{ ansible_hostname }}=https://10.240.0.2:2380
+            --initial-cluster-state new \
+            --data-dir=/var/lib/etcd
+          Restart=on-failure
+          RestartSec=5
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Enable and start the service
+      systemd:
+        name: etcd
+        daemon_reload: yes
+        enabled: yes
+        state: started
+
+    - name: Verify that Etcd is running by querying the member list
+      command:
+        argv:
+          - "etcdctl"
+          - "member"
+          - "list"
+          - "--endpoints"
+          - "https://{{ internal_ip }}:2379"
+          - "--cacert"
+          - "/etc/etcd/ca.pem"
+          - "--cert"
+          - "/etc/etcd/kubernetes.pem"
+          - "--key"
+          - "/etc/etcd/kubernetes-key.pem"
+      environment:
+        ETCDCTL_API: 3
+      register: "check_result"
+
+    - name: Print the Etcd member list
+      debug:
+        msg: "{{ check_result.stdout }}"
 
