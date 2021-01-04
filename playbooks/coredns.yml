@@ -1,0 +1,32 @@
+---
+- hosts: k8s
+  vars:
+    version: "1.7.0"
+  tasks:
+
+    - name: Create the resolv directoly due to issue #46
+      file:
+        state: directory
+        path: /run/systemd/resolve/
+        mode: 0755
+
+    - name: Symlink the resolv.conf file due to issue #46
+      file:
+        state: link
+        src: /etc/resolv.conf
+        dest: /run/systemd/resolve/resolv.conf
+
+    - name: Get the CoreDNS resources manifest
+      get_url:
+        url: "https://storage.googleapis.com/kubernetes-the-hard-way/coredns-{{ version }}.yaml"
+        dest: "{{ ansible_env.HOME }}"
+
+    - name: Apply the manifest
+      command:
+        argv:
+          - "kubectl"
+          - "apply"
+          - "-f"
+          - "{{ ansible_env.HOME }}/coredns-{{ version }}.yaml"
+
+
