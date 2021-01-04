@@ -20,7 +20,7 @@
       - "kubectl"
       - "config"
       - "set-credentials"
-      - "system:node:k8s"
+      - "{{ item.user }}"
       - "--client-certificate"
       - "{{ item.name }}.pem"
       - "--client-key"

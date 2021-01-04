@@ -18,5 +18,50 @@
       include_tasks: config_tasks.yml
       loop: "{{ targets }}"
 
+    - name: Create the Admin Kubernetes configuration file for the default user
+      block:
 
+        - name: "Set cluster"
+          command:
+            argv:
+              - "kubectl"
+              - "config"
+              - "set-cluster"
+              - "k8s"
+              - "--certificate-authority"
+              - "ca.pem"
+              - "--server"
+              - "https://127.0.0.1:6443"
+              - "--embed-certs"
 
+        - name: "Set credentials"
+          command:
+            argv:
+              - "kubectl"
+              - "config"
+              - "set-credentials"
+              - "admin"
+              - "--client-certificate"
+              - "admin.pem"
+              - "--client-key"
+              - "admin-key.pem"
+
+        - name: "Set context"
+          command:
+            argv:
+              - "kubectl"
+              - "config"
+              - "set-context"
+              - "default"
+              - "--cluster"
+              - "k8s"
+              - "--user"
+              - "admin"
+
+        - name: "Use context"
+          command:
+            argv:
+              - "kubectl"
+              - "config"
+              - "use-context"
+              - "default"

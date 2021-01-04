@@ -1,0 +1,269 @@
+---
+- hosts: k8s
+  vars:
+    base_url: "https://storage.googleapis.com/kubernetes-release/release"
+    k8s_version: "1.18.6"
+    runc_version: "1.0.0-rc91"
+    containerd_version: "1.3.6"
+    crictl_version: "1.18.0"
+    cni_version: "0.8.6"
+    target_dir: "/usr/local/bin"
+    pod_cidr: "10.200.0.0/16"
+    private_network: "10.240.0.2"
+  tasks:
+    
+    - name: Install dependencies
+      yum:
+        name:
+          - socat
+          - conntrack-tools
+          - ipset
+
+    - name: Disable Swap
+      command:
+        argv:
+          - "swapoff"
+          - "-a"
+
+    - name: Disable swap permanently, persist reboots
+      lineinfile:
+        path: /etc/fstab
+        regexp: '^(/swapfile.*)'
+        line: '#\1'
+        backrefs: yes
+        state: present
+
+    - name: Create installation directories
+      file:
+        state: directory
+        path: "{{ item }}"
+      with_items:
+        - /etc/cni/net.d
+        - /etc/containerd
+        - /opt/cni/bin
+        - /var/lib/kubelet
+        - /var/lib/kube-proxy
+        - /var/lib/kubernetes
+        - /var/run/kubernetes
+        - "/tmp/containerd-v{{ containerd_version }}"
+        - "/tmp/crictl-v{{ crictl_version }}"
+
+    - name: Get Kubernetes binaries
+      get_url: 
+        url: "{{ base_url}}/v{{ k8s_version }}/bin/linux/amd64/{{ item }}"
+        dest: "{{ target_dir }}/{{ item }}"
+        mode: "u+x"
+      with_items:
+        - kubectl
+        - kubelet
+        - kube-proxy
+
+    - name: Get worker components
+      get_url: 
+        url: "https://github.com/opencontainers/runc/releases/download/v{{ runc_version }}/runc.amd64"
+        dest: "{{ target_dir }}/runc"
+        mode: "u+x"
+
+    - name: Get containerd binary archive
+      unarchive:
+        src: "https://github.com/containerd/containerd/releases/download/v{{ containerd_version }}/containerd-{{ containerd_version }}-linux-amd64.tar.gz"
+        remote_src: yes
+        dest: "/tmp/containerd-v{{ containerd_version }}"
+
+    - name: Copy containerd binaries
+      copy:
+        src: "/tmp/containerd-v{{ containerd_version }}/bin/"
+        remote_src: yes
+        dest: "/bin/"
+        mode: "u+x"
+
+    - name: Get crictl binary archive
+      unarchive:
+        src: "https://github.com/kubernetes-sigs/cri-tools/releases/download/v{{ crictl_version }}/crictl-v{{ crictl_version }}-linux-amd64.tar.gz"
+        remote_src: yes
+        dest: "/tmp/crictl-v{{ crictl_version }}"
+
+    - name: Copy crictl binaries
+      copy:
+        src: "/tmp/crictl-v{{ crictl_version }}/crictl"
+        remote_src: yes
+        dest: "{{ target_dir }}/crictl"
+        mode: "u+x"
+
+    - name: Get and unpack CNI plugins archive
+      unarchive:
+        src: "https://github.com/containernetworking/plugins/releases/download/v{{ cni_version }}/cni-plugins-linux-amd64-v{{ cni_version }}.tgz"
+        remote_src: yes
+        dest: "/opt/cni/bin"
+        mode: "u+x"
+
+    - name: Copy the CNI configuration files
+      copy:
+        src: "worker/{{ item }}"
+        dest: "/etc/cni/net.d/"
+        mode: 0700
+      with_items:
+        - 10-bridge.conf
+        - 99-loopback.conf
+      tags:
+        - replacements
+
+    - name: Replace CIDR stub
+      replace:
+        path: /etc/cni/net.d/10-bridge.conf
+        regexp: '\$\{POD_CIDR\}'
+        replace: '{{ pod_cidr }}'
+      tags:
+        - replacements
+
+    - name: Create the containerd configuration file
+      blockinfile:
+        path: "/etc/containerd/config.toml"
+        create: yes
+        mode: 0700
+        content: |
+          [plugins]
+            [plugins.cri.containerd]
+              snapshotter = "overlayfs"
+              [plugins.cri.containerd.default_runtime]
+                runtime_type = "io.containerd.runtime.v1.linux"
+                runtime_engine = "/usr/local/bin/runc"
+                runtime_root = ""
+
+    - name: Create the containerd Unit
+      blockinfile:
+        path: "/etc/systemd/system/containerd.service"
+        create: yes
+        mode: 0700
+        content: |
+          [Unit]
+          Description=containerd container runtime
+          Documentation=https://containerd.io
+          After=network.target
+
+          [Service]
+          ExecStartPre=/sbin/modprobe overlay
+          ExecStart=/bin/containerd
+          Restart=always
+          RestartSec=5
+          Delegate=yes
+          KillMode=process
+          OOMScoreAdjust=-999
+          LimitNOFILE=1048576
+          LimitNPROC=infinity
+          LimitCORE=infinity
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Copy certificate files for this worker host
+      copy:
+        src: "{{ ansible_env.HOME }}/{{ item.filename }}"
+        remote_src: yes
+        dest: "{{ item.dest_path }}/{{ item.filename }}"
+      with_items:
+        - filename: "{{ ansible_hostname }}-key.pem"
+          dest_path: /var/lib/kubelet
+        - filename: "{{ ansible_hostname }}.pem"
+          dest_path: /var/lib/kubelet
+        - filename: "{{ ansible_hostname }}.kubeconfig"
+          dest_path: /var/lib/kubelet
+        - filename: "{{ ansible_hostname }}.kubeconfig"
+          dest_path: /var/lib/kube-proxy
+        - filename: ca.pem
+          dest_path: /var/lib/kubernetes
+
+    - name: Create Kubelet configuration file
+      blockinfile:
+        create: yes
+        path: "/var/lib/kubelet/kubelet-config.yaml"
+        content: |
+          kind: KubeletConfiguration
+          apiVersion: kubelet.config.k8s.io/v1beta1
+          authentication:
+            anonymous:
+              enabled: false
+            webhook:
+              enabled: true
+            x509:
+              clientCAFile: "/var/lib/kubernetes/ca.pem"
+          authorization:
+            mode: Webhook
+          clusterDomain: "cluster.local"
+          clusterDNS:
+            - "10.32.0.10"
+          podCIDR: "${POD_CIDR}"
+          resolvConf: "/run/systemd/resolve/resolv.conf"
+          runtimeRequestTimeout: "15m"
+          tlsCertFile: "/var/lib/kubelet/{{ ansible_hostname }}.pem"
+          tlsPrivateKeyFile: "/var/lib/kubelet/{{ ansible_hostname }}-key.pem"
+
+    - name: Create the Kubelet Unit
+      blockinfile:
+        create: yes
+        path: "/etc/systemd/system/kubelet.service"
+        content: |
+          [Unit]
+          Description=Kubernetes Kubelet
+          Documentation=https://github.com/kubernetes/kubernetes
+          After=containerd.service
+          Requires=containerd.service
+
+          [Service]
+          ExecStart=/usr/local/bin/kubelet \
+            --config=/var/lib/kubelet/kubelet-config.yaml \
+            --container-runtime=remote \
+            --container-runtime-endpoint=unix:///var/run/containerd/containerd.sock \
+            --image-pull-progress-deadline=2m \
+            --kubeconfig=/var/lib/kubelet/k8s.kubeconfig \
+            --network-plugin=cni \
+            --register-node=true \
+            --v=2
+          Restart=on-failure
+          RestartSec=5
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Create the Proxy configuration file
+      blockinfile:
+        create: yes
+        path: "/var/lib/kube-proxy/kube-proxy-config.yaml"
+        content: |
+          kind: KubeProxyConfiguration
+          apiVersion: kubeproxy.config.k8s.io/v1alpha1
+          clientConnection:
+            kubeconfig: "/var/lib/kube-proxy/k8s.kubeconfig"
+          mode: "iptables"
+          clusterCIDR: "10.200.0.0/16"
+
+    - name: Create the Proxy Unit
+      blockinfile:
+        create: yes
+        path: "/etc/systemd/system/kube-proxy.service"
+        content: |
+          [Unit]
+          Description=Kubernetes Kube Proxy
+          Documentation=https://github.com/kubernetes/kubernetes
+
+          [Service]
+          ExecStart=/usr/local/bin/kube-proxy \
+            --config=/var/lib/kube-proxy/kube-proxy-config.yaml
+          Restart=on-failure
+          RestartSec=5
+
+          [Install]
+          WantedBy=multi-user.target
+
+    - name: Enable and start the services
+      systemd:
+        name: "{{ item }}"
+        daemon_reload: yes
+        enabled: yes
+        state: started
+      with_items:
+        - containerd
+        - kubelet
+        - kube-proxy
+
+

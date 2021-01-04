@@ -69,7 +69,7 @@
             --listen-client-urls https://{{ internal_ip }}:2379,https://127.0.0.1:2379 \
             --advertise-client-urls https://{{ internal_ip }}:2379 \
             --initial-cluster-token etcd-cluster-0 \
-            --initial-cluster {{ ansible_hostname }}=https://10.240.0.2:2380
+            --initial-cluster {{ ansible_hostname }}=https://10.240.0.2:2380 \
             --initial-cluster-state new \
             --data-dir=/var/lib/etcd
           Restart=on-failure
