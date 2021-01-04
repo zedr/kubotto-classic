@@ -193,7 +193,7 @@
           clusterDNS:
             - "10.32.0.10"
           podCIDR: "${POD_CIDR}"
-          resolvConf: "/run/systemd/resolve/resolv.conf"
+          resolvConf: "/etc/resolv.conf"
           runtimeRequestTimeout: "15m"
           tlsCertFile: "/var/lib/kubelet/{{ ansible_hostname }}.pem"
           tlsPrivateKeyFile: "/var/lib/kubelet/{{ ansible_hostname }}-key.pem"

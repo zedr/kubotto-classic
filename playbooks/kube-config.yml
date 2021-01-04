@@ -65,3 +65,17 @@
               - "config"
               - "use-context"
               - "default"
+
+    - name: Copy over the Kubelet admin user cluster role binding manifest
+      copy:
+        src: user/apiserver-kubelet-admin_crb.yml
+        dest: "{{ ansible_env.HOME }}"
+
+    - name: Create the Kubelet admin user cluster role binding
+      command:
+        argv:
+          - "kubectl"
+          - "apply"
+          - "-f"
+          - "{{ ansible_env.HOME }}/apiserver-kubelet-admin_crb.yml"
+
