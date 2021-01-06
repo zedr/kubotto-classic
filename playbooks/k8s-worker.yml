@@ -189,7 +189,7 @@
           dest_path: /var/lib/kubelet
         - filename: "{{ ansible_hostname }}.kubeconfig"
           dest_path: /var/lib/kubelet
-        - filename: "{{ ansible_hostname }}.kubeconfig"
+        - filename: "kube-proxy.kubeconfig"
           dest_path: /var/lib/kube-proxy
         - filename: ca.pem
           dest_path: /var/lib/kubernetes
@@ -254,7 +254,7 @@
           kind: KubeProxyConfiguration
           apiVersion: kubeproxy.config.k8s.io/v1alpha1
           clientConnection:
-            kubeconfig: "/var/lib/kube-proxy/k8s.kubeconfig"
+            kubeconfig: "/var/lib/kube-proxy/kube-proxy.kubeconfig"
           mode: "iptables"
           clusterCIDR: "10.200.0.0/16"
 
@@ -287,15 +287,19 @@
         - kubelet
         - kube-proxy
 
-    - name: Copy over the Kubelet admin user cluster role binding manifest
+    - name: Copy over the required cluster role binding manifests
       copy:
-        src: user/apiserver-kubelet-admin_crb.yml
+        src: "{{ item }}"
         dest: "{{ ansible_env.HOME }}"
+      with_items:
+        - user/apiserver-kubelet-admin_crb.yml
 
-    - name: Create the Kubelet admin user cluster role binding
+    - name: Create the required cluster role bindings
       command:
         argv:
           - "kubectl"
           - "apply"
           - "-f"
-          - "{{ ansible_env.HOME }}/apiserver-kubelet-admin_crb.yml"
+          - "{{ ansible_env.HOME }}/{{ item }}"
+      with_items:
+        - apiserver-kubelet-admin_crb.yml
