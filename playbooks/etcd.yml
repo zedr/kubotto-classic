@@ -2,7 +2,7 @@
 - hosts: all
   vars:
     base_url: "https://github.com/etcd-io/etcd/releases/download"
-    version: "3.4.10"
+    version: "3.4.13"
     target_dir: "/usr/local/bin"
     internal_ip: "10.240.0.2"
   tasks:
