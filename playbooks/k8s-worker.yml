@@ -77,6 +77,27 @@
         dest: "/bin/"
         mode: "u+x"
 
+    - name: Make a list of containerd binaries
+      find:
+        paths: /bin
+        patterns: 'containerd*'
+      register: containerd_bins
+      tags:
+        - containerd
+
+    - debug:
+        msg: "{{ containerd_bins.files }}"
+      tags:
+        - containerd
+
+    - name: Ensure containerd binaries are executable
+      file:
+        path: "{{ item.path }}"
+        mode: "u+x"
+      with_items: "{{ containerd_bins.files }}"
+      tags:
+        - containerd
+
     - name: Get crictl binary archive
       unarchive:
         src: "https://github.com/kubernetes-sigs/cri-tools/releases/download/v{{ crictl_version }}/crictl-v{{ crictl_version }}-linux-amd64.tar.gz"
@@ -266,4 +287,15 @@
         - kubelet
         - kube-proxy
 
+    - name: Copy over the Kubelet admin user cluster role binding manifest
+      copy:
+        src: user/apiserver-kubelet-admin_crb.yml
+        dest: "{{ ansible_env.HOME }}"
 
+    - name: Create the Kubelet admin user cluster role binding
+      command:
+        argv:
+          - "kubectl"
+          - "apply"
+          - "-f"
+          - "{{ ansible_env.HOME }}/apiserver-kubelet-admin_crb.yml"
