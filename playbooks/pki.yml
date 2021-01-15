@@ -74,7 +74,7 @@
 
             - name: Copy Admin CSR
               copy:
-                src: "pki/k8s-csr.json"
+                src: "pki/{{ ansible_hostname }}-csr.json"
                 dest: "{{ ansible_env.HOME }}"
             
             - name: Generate Admin cert
@@ -89,16 +89,16 @@
                   - "-config"
                   - "ca-config.json"
                   - "-hostname"
-                  - "k8s,{{ ansible_all_ipv4_addresses | join(',') }}"
+                  - "{{ ansible_hostname }},{{ ansible_all_ipv4_addresses | join(',') }}"
                   - "-profile"
                   - "kubernetes"
-                  - "k8s-csr.json"
+                  - "{{ ansible_hostname }}-csr.json"
               register: cfssl_result
             
             - name: Process response from cfssl
               command:
-                cmd: "cfssljson -bare k8s"
-                creates: k8s.pem
+                cmd: "cfssljson -bare {{ ansible_hostname }}"
+                creates: "{{ ansible_hostname }}.pem"
               args:
                 stdin: "{{ cfssl_result.stdout | string }}"
 
