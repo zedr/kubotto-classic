@@ -2,12 +2,14 @@
 - hosts: all
   vars:
     base_url: "https://storage.googleapis.com/kubernetes-release/release"
-    version: "1.20.0"
+    k8s_version: "1.20.0"
     target_dir: "/usr/local/bin"
+    arch: amd64
   tasks:
+
     - name: Get Kubernetes binaries
       get_url: 
-        url: "{{ base_url}}/v{{ version }}/bin/linux/amd64/{{ item }}"
+        url: "{{ base_url}}/v{{ k8s_version }}/bin/linux/{{ arch }}/{{ item }}"
         dest: "{{ target_dir }}"
         mode: "u+x"
       with_items:

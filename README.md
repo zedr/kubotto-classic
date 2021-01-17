@@ -6,6 +6,13 @@ Based on [Kubernetes The Hard Way](https://github.com/kelseyhightower/kubernetes
 
 Updated to Kubernetes 1.20.0.
 
+## Supported architectures
+
+ - amd64
+ - arm
+
+Set using extra var `arch`, e.g. `-e arch=arm64`.
+
 ## Dependencies
 
  - Vagrant

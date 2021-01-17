@@ -1,16 +1,22 @@
 ---
 - hosts: all
   vars:
-    base_url: "https://storage.googleapis.com/kubernetes-the-hard-way/cfssl"
-    version: "1.4.1"
+    base_url: "https://pkg.cfssl.org"
+    version: "1.2"
     target_dir: "/usr/local/bin"
+    arch: "amd64"
+    os: "linux"
     kubernetes_hostnames: "kubernetes,kubernetes.default,kubernetes.default.svc,kubernetes.default.svc.cluster,kubernetes.svc.cluster.local"
   tasks:
 
-    - name: Download cfssl tools
+    - set_fact:
+        _arch: "386"
+      when: arch == "amd64"
+
+    - name: Download and renane cfssl tools
       get_url:
-        url: "{{ base_url }}/{{ version }}/linux/{{ item }}"
-        dest: "{{ target_dir }}"
+        url: "{{ base_url }}/R{{ version }}/{{ item }}_{{ os }}-{{ _arch }}"
+        dest: "{{ target_dir }}/{{ item }}"
         mode: "u+x"
       with_items:
         - cfssl
@@ -38,7 +44,7 @@
           args:
             stdin: "{{ cfssl_result.stdout | string }}"
 
-    - name: Create Admin client certificates
+    - name: Create certificates
       block:
 
         - name: Copy Admin CSR
@@ -74,8 +80,8 @@
 
             - name: Copy Admin CSR
               copy:
-                src: "pki/{{ ansible_hostname }}-csr.json"
-                dest: "{{ ansible_env.HOME }}"
+                src: "pki/k8s-csr.json"
+                dest: "{{ ansible_env.HOME }}/{{ ansible_hostname }}-csr.json"
             
             - name: Generate Admin cert
               command:

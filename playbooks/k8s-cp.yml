@@ -1,8 +1,14 @@
 ---
 - hosts: k8s
   vars:
-    internal_ip: "10.240.0.2"
+    internal_ip:
+    cluster_cidr: "10.32.0.0/24"
+    pod_cidr: "10.200.0.0/16"
   tasks:
+
+    - set_fact:
+        internal_ip: "{{ ansible_default_ipv4.address }}"
+      when: not internal_ip
 
     - name: Create the Kubernetes var/lib directory
       file:
@@ -60,7 +66,7 @@
             --kubelet-https=true \
             --runtime-config='api/all=true' \
             --service-account-key-file=/var/lib/kubernetes/service-account.pem \
-            --service-cluster-ip-range=10.32.0.0/24 \
+            --service-cluster-ip-range={{ cluster_cidr }} \
             --service-node-port-range=30000-32767 \
             --tls-cert-file=/var/lib/kubernetes/kubernetes.pem \
             --tls-private-key-file=/var/lib/kubernetes/kubernetes-key.pem \
@@ -86,7 +92,7 @@
           [Service]
           ExecStart=/usr/local/bin/kube-controller-manager \
             --bind-address=0.0.0.0 \
-            --cluster-cidr=10.200.0.0/16 \
+            --cluster-cidr={{ pod_cidr }} \
             --cluster-name=kubernetes \
             --cluster-signing-cert-file=/var/lib/kubernetes/ca.pem \
             --cluster-signing-key-file=/var/lib/kubernetes/ca-key.pem \
@@ -94,7 +100,7 @@
             --leader-elect=true \
             --root-ca-file=/var/lib/kubernetes/ca.pem \
             --service-account-private-key-file=/var/lib/kubernetes/service-account-key.pem \
-            --service-cluster-ip-range=10.32.0.0/24 \
+            --service-cluster-ip-range={{ cluster_cidr }} \
             --use-service-account-credentials=true \
             --v=2
           Restart=on-failure

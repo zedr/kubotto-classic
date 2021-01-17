@@ -4,8 +4,13 @@
     base_url: "https://github.com/etcd-io/etcd/releases/download"
     version: "3.4.13"
     target_dir: "/usr/local/bin"
-    internal_ip: "10.240.0.2"
+    arch: amd64
+    internal_ip:
   tasks:
+
+    - set_fact:
+        internal_ip: "{{ ansible_default_ipv4.address }}"
+      when: not internal_ip
 
     - name: Get Etcd distribution
       unarchive: 
@@ -69,7 +74,7 @@
             --listen-client-urls https://{{ internal_ip }}:2379,https://127.0.0.1:2379 \
             --advertise-client-urls https://{{ internal_ip }}:2379 \
             --initial-cluster-token etcd-cluster-0 \
-            --initial-cluster {{ ansible_hostname }}=https://10.240.0.2:2380 \
+            --initial-cluster {{ ansible_hostname }}=https://{{ internal_ip }}:2380 \
             --initial-cluster-state new \
             --data-dir=/var/lib/etcd
           Restart=on-failure
@@ -83,7 +88,7 @@
         name: etcd
         daemon_reload: yes
         enabled: yes
-        state: started
+        state: restarted
 
     - name: Verify that Etcd is running by querying the member list
       command:
@@ -102,8 +107,12 @@
       environment:
         ETCDCTL_API: 3
       register: "check_result"
+      tags:
+        - check
 
     - name: Print the Etcd member list
       debug:
         msg: "{{ check_result.stdout }}"
+      tags:
+        - check
 

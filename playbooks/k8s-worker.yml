@@ -9,7 +9,7 @@
     cni_version: "0.8.7"
     target_dir: "/usr/local/bin"
     pod_cidr: "10.200.0.0/16"
-    private_network: "10.240.0.2"
+    arch: amd64
   tasks:
     
     - name: Install dependencies
@@ -50,7 +50,7 @@
 
     - name: Get Kubernetes binaries
       get_url: 
-        url: "{{ base_url}}/v{{ k8s_version }}/bin/linux/amd64/{{ item }}"
+        url: "{{ base_url}}/v{{ k8s_version }}/bin/linux/{{ arch }}/{{ item }}"
         dest: "{{ target_dir }}/{{ item }}"
         mode: "u+x"
       with_items:
@@ -60,13 +60,13 @@
 
     - name: Get worker components
       get_url: 
-        url: "https://github.com/opencontainers/runc/releases/download/v{{ runc_version }}/runc.amd64"
+        url: "https://github.com/opencontainers/runc/releases/download/v{{ runc_version }}/runc.{{ arch }}"
         dest: "{{ target_dir }}/runc"
         mode: "u+x"
 
     - name: Get containerd binary archive
       unarchive:
-        src: "https://github.com/containerd/containerd/releases/download/v{{ containerd_version }}/containerd-{{ containerd_version }}-linux-amd64.tar.gz"
+        src: "https://github.com/containerd/containerd/releases/download/v{{ containerd_version }}/containerd-{{ containerd_version }}-linux-{{ arch }}.tar.gz"
         remote_src: yes
         dest: "/tmp/containerd-v{{ containerd_version }}"
 
@@ -95,7 +95,7 @@
 
     - name: Get crictl binary archive
       unarchive:
-        src: "https://github.com/kubernetes-sigs/cri-tools/releases/download/v{{ crictl_version }}/crictl-v{{ crictl_version }}-linux-amd64.tar.gz"
+        src: "https://github.com/kubernetes-sigs/cri-tools/releases/download/v{{ crictl_version }}/crictl-v{{ crictl_version }}-linux-{{ arch }}.tar.gz"
         remote_src: yes
         dest: "/tmp/crictl-v{{ crictl_version }}"
 
@@ -108,7 +108,7 @@
 
     - name: Get and unpack CNI plugins archive
       unarchive:
-        src: "https://github.com/containernetworking/plugins/releases/download/v{{ cni_version }}/cni-plugins-linux-amd64-v{{ cni_version }}.tgz"
+        src: "https://github.com/containernetworking/plugins/releases/download/v{{ cni_version }}/cni-plugins-linux-{{ arch }}-v{{ cni_version }}.tgz"
         remote_src: yes
         dest: "/opt/cni/bin"
         mode: "u+x"
