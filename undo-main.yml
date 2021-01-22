@@ -1,0 +1,9 @@
+---
+- import_playbook: playbooks/undo_pki.yml 
+- import_playbook: playbooks/undo_k8s-cp-bins.yml 
+- import_playbook: playbooks/kube-config.yml 
+- import_playbook: playbooks/data-enc.yml 
+- import_playbook: playbooks/etcd.yml 
+- import_playbook: playbooks/k8s-cp.yml 
+- import_playbook: playbooks/k8s-worker.yml 
+- import_playbook: playbooks/coredns.yml 

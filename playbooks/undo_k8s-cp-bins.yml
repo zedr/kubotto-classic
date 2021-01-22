@@ -1,0 +1,15 @@
+---
+- hosts: all
+  vars:
+    target_dir: "/usr/local/bin"
+  tasks:
+
+    - name: Remove Kubernetes binaries
+      file:
+        path: "{{ target_dir}}/{{ item }}"
+        state: absent
+      with_items:
+        - kubectl
+        - kube-apiserver
+        - kube-controller-manager
+        - kube-scheduler
