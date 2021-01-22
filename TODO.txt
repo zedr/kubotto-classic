@@ -1,0 +1,5 @@
+ - fix swapoff
+ - cgroup_memory in cmdline
+ - --cgroup-driver=systemd
+ - cgroup-manager: systemd
+ - setenforce 0

@@ -1,0 +1,33 @@
+---
+- hosts: all
+  tasks:
+    - name: Delete cert files
+      file:
+        path: "{{ ansible_env.HOME }}/{{ item }}"
+        state: absent
+      with_items:
+        - admin-csr.json
+        - ca-config.json
+        - ca-csr.json
+        - kube-proxy-csr.json
+        - kube-scheduler-csr.json
+        - kube-controller-manager-csr.json
+        - service-account-csr.json
+        - kubernetes-csr.json
+        - "{{ ansible_hostname }}-csr.json"
+        - ca.pem
+        - ca-key.pem
+        - admin.pem
+        - admin-key.pem
+        - kube-controller-manager.pem
+        - kube-controller-manager-key.pem
+        - kube-proxy.pem
+        - kube-proxy-key.pem
+        - kube-scheduler.pem
+        - kube-scheduler-key.pem
+        - kubernetes.pem
+        - kubernetes-key.pem
+        - service-account.pem
+        - service-account-key.pem
+        - "{{ ansible_hostname }}.pem"
+        - "{{ ansible_hostname }}-key.pem"

@@ -4,13 +4,13 @@
     version: "1.7.0"
   tasks:
 
-    - name: Create the resolv directoly due to issue #46
+    - name: "Create the resolv directly (due to issue #46)"
       file:
         state: directory
         path: /run/systemd/resolve/
         mode: 0755
 
-    - name: Symlink the resolv.conf file due to issue #46
+    - name: "Symlink the resolv.conf file (due to issue #46)"
       file:
         state: link
         src: /etc/resolv.conf

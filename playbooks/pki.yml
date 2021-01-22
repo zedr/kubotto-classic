@@ -13,6 +13,10 @@
         _arch: "386"
       when: arch == "amd64"
 
+    - set_fact:
+        _arch: "arm"
+      when: arch == "arm"
+
     - name: Download and renane cfssl tools
       get_url:
         url: "{{ base_url }}/R{{ version }}/{{ item }}_{{ os }}-{{ _arch }}"
@@ -82,7 +86,19 @@
               copy:
                 src: "pki/k8s-csr.json"
                 dest: "{{ ansible_env.HOME }}/{{ ansible_hostname }}-csr.json"
-            
+
+            - slurp:
+                src: "{{ ansible_env.HOME }}/{{ ansible_hostname }}-csr.json"
+              register: k8s_csr
+
+            - set_fact:
+                k8s_csr: "{{ k8s_csr.content|b64decode|from_json | combine({ 'CN': 'system:node:' + ansible_hostname }) }}"
+
+            - copy:
+                dest: "{{ ansible_env.HOME }}/{{ ansible_hostname }}-csr.json"
+                content: "{{ k8s_csr }}"
+                force: yes
+
             - name: Generate Admin cert
               command:
                 argv:

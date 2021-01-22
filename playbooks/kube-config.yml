@@ -2,8 +2,8 @@
 - hosts: k8s
   vars:
     targets:
-      - name: "k8s"
-        user: "system:node:k8s"
+      - name: "{{ ansible_hostname }}"
+        user: "system:node:{{ ansible_hostname }}"
       - name: "kube-proxy"
         user: "system:kube-proxy"
       - name: "kube-controller-manager"

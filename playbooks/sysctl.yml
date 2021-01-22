@@ -1,0 +1,10 @@
+---
+- name: Add fs.may_detach_mounts 1 to sysctl.conf
+  lineinfile:
+    path: /etc/sysctl.conf
+    regexp: "^fs.may_detach_mounts="
+    line: "fs.may_detach_mounts=1"
+
+- name: Reload sysctl
+  command: "systctl -p"
+

@@ -2,7 +2,7 @@
 - hosts: all
   vars:
     base_url: "https://github.com/etcd-io/etcd/releases/download"
-    version: "3.4.13"
+    version: "3.4.9"
     target_dir: "/usr/local/bin"
     arch: amd64
     internal_ip:
@@ -12,22 +12,57 @@
         internal_ip: "{{ ansible_default_ipv4.address }}"
       when: not internal_ip
 
-    - name: Get Etcd distribution
-      unarchive: 
-        src: "{{ base_url}}/v{{ version }}/etcd-v{{ version }}-linux-amd64.tar.gz"
-        remote_src: yes
-        dest: "/tmp/"
-        creates: "/tmp/etcd-v{{ version }}-linux-amd64"
+    - block:
 
-    - name: Copy Etcd binaries
-      copy:
-        src: "/tmp/etcd-v{{ version }}-linux-amd64/{{ item }}"
-        dest: "/usr/local/bin/"
-        remote_src: yes
-        mode: "u+x"
-      with_items:
-        - etcd
-        - etcdctl
+        - name: Get Etcd distribution
+          unarchive: 
+            src: "{{ base_url}}/v{{ version }}/etcd-v{{ version }}-linux-{{ arch }}.tar.gz"
+            remote_src: yes
+            dest: "/tmp/"
+            creates: "/tmp/etcd-v{{ version }}-linux-amd64"
+
+        - name: Copy Etcd binaries
+          copy:
+            src: "/tmp/etcd-v{{ version }}-linux-amd64/{{ item }}"
+            dest: "/usr/local/bin/"
+            remote_src: yes
+            mode: "u+x"
+          with_items:
+            - etcd
+            - etcdctl
+
+      when: arch == "amd64"
+
+    - block:
+
+        - name: "Checkout the etcd codebase at version {{ version }}"
+          git:
+            repo: "https://github.com/coreos/etcd.git"
+            dest: "{{ ansible_env.HOME}}/src/etcd"
+            version: "v{{ version }}"
+            update: no
+
+        - name: Fetch vendor dependencies
+          command:
+            chdir: "{{ ansible_env.HOME}}/src/etcd"
+            cmd: "go mod vendor"
+
+        - name: Build etcd 
+          command:
+            chdir: "{{ ansible_env.HOME}}/src/etcd"
+            cmd: make
+            creates: "{{ ansible_env.HOME}}/src/etcd/bin/etcd"
+          register: make_result
+          environment:
+            ETCD_UNSUPPORTED_ARCH: arm
+
+        - name: Install etcd
+          copy:
+            src: "{{ ansible_env.HOME}}/src/etcd/bin/"
+            remote_src: yes
+            dest: "{{ target_dir }}/"
+
+      when: arch == "arm"
 
     - name: Configure Etcd
       file:
@@ -37,6 +72,22 @@
       with_items:
         - "/etc/etcd"
         - "/var/lib/etcd"
+
+    - name: Create an environment file for etcd on ARM
+      blockinfile:
+        path: /etc/etcd/etcd.conf
+        content: |
+          ETCD_UNSUPPORTED_ARCH=arm
+        create: yes
+      when: arch == "arm"
+
+    - name: Create an empty environment file for etcd on AMD64
+      command: 
+        cmd: "touch /etc/etcd/etcd.conf"
+        creates: "/etc/etcd/etcd.conf"
+      when: arch == "amd64"
+
+    - include_tasks: sysctl.yml
 
     - name: Copy the certificate to the Etcd config directory
       copy:
@@ -79,6 +130,7 @@
             --data-dir=/var/lib/etcd
           Restart=on-failure
           RestartSec=5
+          EnvironmentFile=/etc/etcd/etcd.conf
 
           [Install]
           WantedBy=multi-user.target

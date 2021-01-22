@@ -3,9 +3,10 @@
   vars:
     base_url: "https://storage.googleapis.com/kubernetes-release/release"
     k8s_version: "1.20.0"
+    crio_version: "1.20.0"
     runc_version: "1.0.0-rc92"
-    containerd_version: "1.4.1"
     crictl_version: "1.19.0"
+    go_version: "1.15.6"
     cni_version: "0.8.7"
     target_dir: "/usr/local/bin"
     pod_cidr: "10.200.0.0/16"
@@ -45,7 +46,6 @@
         - /var/lib/kube-proxy
         - /var/lib/kubernetes
         - /var/run/kubernetes
-        - "/tmp/containerd-v{{ containerd_version }}"
         - "/tmp/crictl-v{{ crictl_version }}"
 
     - name: Get Kubernetes binaries
@@ -58,40 +58,8 @@
         - kubelet
         - kube-proxy
 
-    - name: Get worker components
-      get_url: 
-        url: "https://github.com/opencontainers/runc/releases/download/v{{ runc_version }}/runc.{{ arch }}"
-        dest: "{{ target_dir }}/runc"
-        mode: "u+x"
-
-    - name: Get containerd binary archive
-      unarchive:
-        src: "https://github.com/containerd/containerd/releases/download/v{{ containerd_version }}/containerd-{{ containerd_version }}-linux-{{ arch }}.tar.gz"
-        remote_src: yes
-        dest: "/tmp/containerd-v{{ containerd_version }}"
-
-    - name: Copy containerd binaries
-      copy:
-        src: "/tmp/containerd-v{{ containerd_version }}/bin/"
-        remote_src: yes
-        dest: "/bin/"
-        mode: "u+x"
-
-    - name: Make a list of containerd binaries
-      find:
-        paths: /bin
-        patterns: 'containerd*'
-      register: containerd_bins
-      tags:
-        - containerd
-
-    - name: Ensure containerd binaries are executable
-      file:
-        path: "{{ item.path }}"
-        mode: "u+x"
-      with_items: "{{ containerd_bins.files }}"
-      tags:
-        - containerd
+    - include_tasks:
+        file: crio-build.yml
 
     - name: Get crictl binary archive
       unarchive:
@@ -131,46 +99,6 @@
         replace: '{{ pod_cidr }}'
       tags:
         - replacements
-
-    - name: Create the containerd configuration file
-      blockinfile:
-        path: "/etc/containerd/config.toml"
-        create: yes
-        mode: 0700
-        content: |
-          [plugins]
-            [plugins.cri.containerd]
-              snapshotter = "overlayfs"
-              [plugins.cri.containerd.default_runtime]
-                runtime_type = "io.containerd.runtime.v1.linux"
-                runtime_engine = "/usr/local/bin/runc"
-                runtime_root = ""
-
-    - name: Create the containerd Unit
-      blockinfile:
-        path: "/etc/systemd/system/containerd.service"
-        create: yes
-        mode: 0700
-        content: |
-          [Unit]
-          Description=containerd container runtime
-          Documentation=https://containerd.io
-          After=network.target
-
-          [Service]
-          ExecStartPre=/sbin/modprobe overlay
-          ExecStart=/bin/containerd
-          Restart=always
-          RestartSec=5
-          Delegate=yes
-          KillMode=process
-          OOMScoreAdjust=-999
-          LimitNOFILE=1048576
-          LimitNPROC=infinity
-          LimitCORE=infinity
-
-          [Install]
-          WantedBy=multi-user.target
 
     - name: Copy certificate files for this worker host
       copy:
@@ -217,21 +145,22 @@
     - name: Create the Kubelet Unit
       blockinfile:
         create: yes
-        path: "/etc/systemd/system/kubelet.service"
+        path: "/usr/lib/systemd/system/kubelet.service"
         content: |
           [Unit]
           Description=Kubernetes Kubelet
           Documentation=https://github.com/kubernetes/kubernetes
-          After=containerd.service
-          Requires=containerd.service
+          After=crio.service
+          Requires=crio.service
 
           [Service]
           ExecStart=/usr/local/bin/kubelet \
             --config=/var/lib/kubelet/kubelet-config.yaml \
             --container-runtime=remote \
-            --container-runtime-endpoint=unix:///var/run/containerd/containerd.sock \
+            --container-runtime-endpoint=unix:///var/run/crio/crio.sock \
+            --runtime-request-timeout=10m \
             --image-pull-progress-deadline=2m \
-            --kubeconfig=/var/lib/kubelet/k8s.kubeconfig \
+            --kubeconfig=/var/lib/kubelet/{{ ansible_hostname }}.kubeconfig \
             --network-plugin=cni \
             --register-node=true \
             --v=2
@@ -256,7 +185,7 @@
     - name: Create the Proxy Unit
       blockinfile:
         create: yes
-        path: "/etc/systemd/system/kube-proxy.service"
+        path: "/usr/lib/systemd/system/kube-proxy.service"
         content: |
           [Unit]
           Description=Kubernetes Kube Proxy
@@ -278,7 +207,7 @@
         enabled: yes
         state: started
       with_items:
-        - containerd
+        - cri-o
         - kubelet
         - kube-proxy
 

@@ -1,0 +1,36 @@
+---
+- hosts: all
+  vars:
+    arch: amd64
+  tasks:
+
+    - set_fact:
+        _arch: "armv7l"
+      when: arch == "arm"
+      tags:
+        - runc
+        - containerd
+
+    - set_fact:
+        _arch: "x86_64"
+      when: arch == "amd64"
+      tags:
+        - runc
+        - containerd
+    - name: Add docker-ce repo
+      yum_repository:
+        name: docker-ce
+        description: Docker CE Stable
+        baseurl: "https://download.docker.com/linux/centos/$releasever/{{ _arch }}/stable"
+        gpgkey: "https://download.docker.com/linux/centos/gpg"
+
+    - name: Install Docker dependencies
+      yum:
+        name:
+          - yum-utils
+          - device-mapper-persistent-data
+          - lvm2
+          - containerd.io-1.2.13
+          - docker-ce-19.03.11
+          - docker-ce-cli-19.03.11
+        state: present

@@ -1,0 +1,120 @@
+---
+- name: Install shared build dependencies
+  yum:
+    name:
+      - "@development"
+      - libseccomp-devel
+  tags:
+    - runc
+    - cri-o
+
+- set_fact:
+    _arch: "armv6l"
+  when: arch == "arm"
+  tags:
+    - runc
+    - cri-o
+
+- set_fact:
+    _arch: "amd64"
+  when: arch == "amd64"
+  tags:
+    - runc
+    - cri-o
+
+- name: Download golang runtime
+  unarchive:
+    src: "https://golang.org/dl/go{{ go_version }}.linux-{{ _arch }}.tar.gz"
+    remote_src: yes
+    dest: "/opt/"
+    creates: "/opt/go/"
+  tags:
+    - runc
+    - cri-o
+
+- name: Include go binaries in PATH
+  blockinfile:
+    path: "/etc/profile.d/opt-golang.sh"
+    create: yes
+    content: |
+      export PATH=$PATH:/opt/go/bin
+  tags:
+    - runc
+    - cri-o
+
+- name: Build and install runc
+  block:
+
+    - name: "Checkout the runc codebase at version {{ runc_version }}"
+      git:
+        repo: "https://github.com/opencontainers/runc.git"
+        dest: "{{ ansible_env.HOME}}/src/runc"
+        version: "v{{ runc_version }}"
+        update: no
+      tags:
+        - runc
+
+    - name: Build runc
+      command:
+        chdir: "{{ ansible_env.HOME}}/src/runc"
+        cmd: make
+        creates: "{{ ansible_env.HOME}}/src/runc/runc"
+      register: make_result
+      tags:
+        - runc
+
+    - copy:
+        src: "{{ ansible_env.HOME}}/src/runc/runc"
+        remote_src:  yes
+        dest: /usr/local/bin/runc
+        mode: 0755
+      tags:
+        - runc
+
+- name: Build and install CRI-O
+  block:
+
+    - name: Install cri-o build dependencies
+      yum:
+        name:
+          - containers-common
+          - device-mapper-devel
+          - git
+          - glib2-devel
+          - glibc-devel
+          - glibc-static
+          - gpgme-devel
+          - libassuan-devel
+          - libgpg-error-devel
+          - libselinux-devel
+          - pkgconfig
+          - conmon
+      tags:
+        - cri-o
+
+    - name: "Checkout the cri-o codebase at version {{ crio_version }}"
+      git:
+        repo: "https://github.com/cri-o/cri-o.git"
+        dest: "{{ ansible_env.HOME}}/src/cri-o"
+        version: "v{{ crio_version }}"
+        update: no
+      tags:
+        - cri-o
+
+    - name: Build cri-o
+      command:
+        chdir: "{{ ansible_env.HOME}}/src/cri-o"
+        cmd: make
+        creates: "{{ ansible_env.HOME}}/src/cri-o/bin/crio"
+      register: make_result
+      tags:
+        - cri-o
+
+    - name: Install cri-o
+      command:
+        chdir: "{{ ansible_env.HOME}}/src/cri-o"
+        cmd: "make install"
+        creates: /usr/local/lib/systemd/system/cri-o.service
+      register: make_result
+      tags:
+        - cri-o
