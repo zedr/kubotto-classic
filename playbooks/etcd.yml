@@ -58,9 +58,19 @@
 
         - name: Install etcd
           copy:
-            src: "{{ ansible_env.HOME}}/src/etcd/bin/"
+            src: "{{ ansible_env.HOME}}/src/etcd/bin/{{ item }}"
             remote_src: yes
-            dest: "{{ target_dir }}/"
+            dest: "{{ target_dir }}/{{ item }}"
+            mode: 0755
+          with_items:
+            - etcd
+            - etcdctl
+
+        - name: Add environment variable needed on ARM
+          blockinfile:
+            path: /etc/profile.d/etcd-arm.sh
+            create: yes
+            content: "ETCD_UNSUPPORTED_ARCH=arm"
 
       when: arch == "arm"
 
@@ -88,6 +98,7 @@
       when: arch == "amd64"
 
     - include_tasks: sysctl.yml
+      when: arch == "amd64"
 
     - name: Copy the certificate to the Etcd config directory
       copy:

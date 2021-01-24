@@ -17,7 +17,7 @@
         _arch: "arm"
       when: arch == "arm"
 
-    - name: Download and renane cfssl tools
+    - name: Download and rename cfssl tools
       get_url:
         url: "{{ base_url }}/R{{ version }}/{{ item }}_{{ os }}-{{ _arch }}"
         dest: "{{ target_dir }}/{{ item }}"
