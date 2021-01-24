@@ -73,6 +73,12 @@
         dest: "{{ target_dir }}/crictl"
         mode: "u+x"
 
+    - name: Create crio config file with parameters
+      lineinfile:
+        path: /etc/crio/crio.conf
+        regexp: "^cgroup_driver ?="
+        line: "cgroup_driver = \"systemd\""
+
     - name: Get and unpack CNI plugins archive
       unarchive:
         src: "https://github.com/containernetworking/plugins/releases/download/v{{ cni_version }}/cni-plugins-linux-{{ arch }}-v{{ cni_version }}.tgz"
@@ -162,6 +168,7 @@
             --kubeconfig=/var/lib/kubelet/{{ ansible_hostname }}.kubeconfig \
             --network-plugin=cni \
             --register-node=true \
+            --cgroup-driver=systemd \
             --v=2
           Restart=on-failure
           RestartSec=5
@@ -198,6 +205,9 @@
 
           [Install]
           WantedBy=multi-user.target
+
+    - name: Disable SELinux (FIXME)
+      command: "setenforce 0"
 
     - name: Enable and start the services
       systemd:

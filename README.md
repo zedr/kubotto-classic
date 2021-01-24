@@ -13,6 +13,10 @@ Updated to Kubernetes 1.20.0.
 
 Set using extra var `arch`, e.g. `-e arch=arm64`.
 
+## Caveats
+
+ - SELinux is disabled, for now.
+
 ## Dependencies
 
  - Vagrant

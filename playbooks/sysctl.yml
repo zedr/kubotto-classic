@@ -6,5 +6,5 @@
     line: "fs.may_detach_mounts=1"
 
 - name: Reload sysctl
-  command: "systctl -p"
+  command: "sysctl -p"
 
