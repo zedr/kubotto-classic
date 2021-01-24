@@ -1,0 +1,27 @@
+---
+- hosts: all
+  vars:
+    target_dir: "/usr/local/bin"
+  tasks:
+
+    - name: Disable and stop the service
+      systemd:
+        name: etcd
+        daemon_reload: yes
+        enabled: no
+        state: stopped
+
+    - name: Delete related files and directories
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - "{{ target_dir }}/etcd"
+        - "{{ ansible_env.HOME}}/src/etcd"
+        - "/etc/systemd/system/etcd.service"
+        - "/etc/etcd/ca.pem"
+        - "/etc/etcd/kubernetes-key.pem"
+        - "/etc/etcd/kubernetes.pem"
+        - "/etc/etcd/etcd.conf"
+        - "/etc/etcd"
+        - "/var/lib/etcd"

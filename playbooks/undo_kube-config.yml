@@ -1,0 +1,10 @@
+---
+- hosts: all
+  tasks:
+
+    - name: Reset kubeconfig context
+      file:
+        path: "{{ ansible_env.HOME }}/.kube/"
+        state: absent
+
+

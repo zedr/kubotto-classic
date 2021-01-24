@@ -1,0 +1,76 @@
+---
+- hosts: all
+  vars:
+    target_dir: "/usr/local/bin"
+  tasks:
+
+    - name: Delete the required cluster role bindings
+      command:
+        argv:
+          - "kubectl"
+          - "delete"
+          - "-f"
+          - "{{ ansible_env.HOME }}/{{ item }}"
+      with_items:
+        - apiserver-kubelet-admin_crb.yml
+      ignore_errors: true
+
+    - name: Delete the cluster role binding manifests
+      file:
+        path: "{{ ansible_env.HOME }}/{{ item }}"
+        state: "absent"
+      with_items:
+        - apiserver-kubelet-admin_crb.yml
+
+    - name: Stop and disable the services
+      systemd:
+        name: "{{ item }}"
+        daemon_reload: yes
+        enabled: no
+        state: stopped
+      with_items:
+        - cri-o
+        - kubelet
+        - kube-proxy
+      ignore_errors: true
+
+    - name: Delete related files and directories
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - "/usr/lib/systemd/system/kube-proxy.service"
+        - "/usr/lib/systemd/system/kubelet.service"
+        - "/var/lib/kubelet/kubelet-config.yaml"
+        - "/etc/cni/"
+        - "/opt/cni/"
+        - "{{ target_dir }}/crictl"
+        - "{{ target_dir }}/kubectl"
+        - "{{ target_dir }}/kubelet"
+        - "{{ target_dir }}/kube-proxy"
+        - "/var/lib/kubelet/"
+        - "/var/lib/kube-proxy/"
+        - "/var/run/kubernetes/"
+      ignore_errors: true
+
+    - name: Uninstall dependencies
+      yum:
+        name:
+          - socat
+          - conntrack-tools
+          - ipset
+        state: absent
+
+    - name: Enable Swap
+      command:
+        argv:
+          - "swapon"
+          - "-a"
+
+    - name: Enable swap permanently, persist reboots
+      lineinfile:
+        path: /etc/fstab
+        regexp: '^#(/swapfile.*)'
+        line: '\1'
+        backrefs: yes
+        state: present

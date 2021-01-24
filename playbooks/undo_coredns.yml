@@ -1,0 +1,24 @@
+---
+- hosts: all
+  vars:
+    version: "1.7.0"
+  tasks:
+
+    - name: Remove the resolve directory and containing files
+      file:
+        path: /run/systemd/resolve/
+        state: absent
+
+    - name: Delete the manifest resource
+      command:
+        argv:
+          - "kubectl"
+          - "delete"
+          - "-f"
+          - "{{ ansible_env.HOME }}/coredns-{{ version }}.yaml"
+      ignore_errors: true
+
+    - name: Delete the file
+      file:
+        state: absent
+        path: "{{ ansible_env.HOME }}/coredns-{{ version }}.yaml"

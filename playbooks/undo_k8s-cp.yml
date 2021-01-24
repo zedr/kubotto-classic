@@ -1,0 +1,34 @@
+---
+- hosts: all
+  tasks:
+
+    - name: Stop and disable the services
+      systemd:
+        name: "{{ item }}"
+        daemon_reload: yes
+        enabled: yes
+        state: restarted
+      with_items:
+        - kube-apiserver
+        - kube-controller-manager
+        - kube-scheduler
+
+    - name: Delete related files and directories
+      file:
+        path: "{{ item }}"
+        state: absent
+      with_items:
+        - "/etc/systemd/system/kube-scheduler.service"
+        - "/etc/kubernetes/config/kube-scheduler.yml"
+        - "/etc/systemd/system/kube-controller-manager.service"
+        - "/etc/systemd/system/kube-apiserver.service"
+        - "/var/lib/kubernetes/ca.pem"
+        - "/var/lib/kubernetes/ca-key.pem"
+        - "/var/lib/kubernetes/kubernetes-key.pem"
+        - "/var/lib/kubernetes/kubernetes.pem"
+        - "/var/lib/kubernetes/service-account-key.pem"
+        - "/var/lib/kubernetes/service-account.pem"
+        - "/var/lib/kubernetes/encryption-config.yml"
+        - "/var/lib/kubernetes/kube-controller-manager.kubeconfig"
+        - "/var/lib/kubernetes/kube-scheduler.kubeconfig"
+        - "/var/lib/kubernetes/"

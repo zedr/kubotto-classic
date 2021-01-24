@@ -1,0 +1,8 @@
+---
+- hosts: all
+  tasks:
+
+    - name: Remove EncryptionConfig resource
+      file:
+        path: "{{ ansible_env.HOME }}/encryption-config.yml"
+        state: absent

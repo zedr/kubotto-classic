@@ -12,7 +12,7 @@
 
     - name: Create the Kubernetes var/lib directory
       file:
-        path: "/var/lib/kubernetes"
+        path: "/var/lib/kubernetes/"
         state: directory
         mode: 0700
     

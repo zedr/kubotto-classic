@@ -4,7 +4,7 @@
     version: "1.7.0"
   tasks:
 
-    - name: "Create the resolv directly (due to issue #46)"
+    - name: "Create the resolv directory (due to issue #46)"
       file:
         state: directory
         path: /run/systemd/resolve/
