@@ -3,6 +3,7 @@
 - import_playbook: playbooks/k8s-cp-bins.yml 
 - import_playbook: playbooks/kube-config.yml 
 - import_playbook: playbooks/data-enc.yml 
+- import_playbook: playbooks/k8s-common.yml
 - import_playbook: playbooks/etcd.yml 
 - import_playbook: playbooks/k8s-cp.yml 
 - import_playbook: playbooks/k8s-worker.yml 

@@ -8,3 +8,9 @@
         path: /etc/modules-load.d/netfilter.conf
         create: yes
         content: "br_netfilter"
+
+    - name: Reload Systemd modules
+      systemd:
+        name: systemd-modules-load
+        daemon_reload: yes
+        state: reloaded
