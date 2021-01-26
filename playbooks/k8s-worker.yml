@@ -2,7 +2,7 @@
 - hosts: k8s
   vars:
     base_url: "https://storage.googleapis.com/kubernetes-release/release"
-    k8s_version: "1.20.0"
+    k8s_version: "1.20.2"
     crio_version: "1.20.0"
     runc_version: "1.0.0-rc92"
     crictl_version: "1.19.0"

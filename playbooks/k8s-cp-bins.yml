@@ -2,7 +2,7 @@
 - hosts: all
   vars:
     base_url: "https://storage.googleapis.com/kubernetes-release/release"
-    k8s_version: "1.20.0"
+    k8s_version: "1.20.2"
     target_dir: "/usr/local/bin"
     arch: amd64
   tasks:

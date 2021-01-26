@@ -6,8 +6,8 @@
       systemd:
         name: "{{ item }}"
         daemon_reload: yes
-        enabled: yes
-        state: restarted
+        enabled: no
+        state: stopped
       with_items:
         - kube-apiserver
         - kube-controller-manager
