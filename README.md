@@ -1,4 +1,4 @@
-# k8s from scratch
+# Kubotto
 Ansible Playbooks to install a custom, single-node Kubernetes cluster,
 from scratch.
 
